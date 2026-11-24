@@ -239,7 +239,7 @@ const svg=n=>`<svg class="i" aria-hidden="true"><use href="#${ICON[n]||'i-dot'}"
 let code='',appData={slides:[],classes:[],eskul:[],counts:{}},eskul='',kelas='',members=[],students=[],ownCount=0,selected=[],slideTimer=null,lastFocus=null,openId=null,askRes=null;
 
 /* Server */
-const API_URL='PASTE_URL_DEPLOY_GAS_DI_SINI';
+const API_URL='https://script.google.com/macros/s/AKfycbx-hHWj5PkTGDkdNA3mQzhowSOj7VFNlZwuRPaFy1UwxBbZxRRhX3srJb8ATtieeqAS/exec';
 const srv=async(fn,...a)=>{
   if(!/^https:\/\//.test(API_URL))throw new Error('API_URL belum diisi. Tempel URL deploy Apps Script di kode.');
   let r,j;
