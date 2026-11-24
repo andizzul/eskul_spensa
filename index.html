@@ -78,6 +78,7 @@ main{flex:1;min-height:0;overflow-y:auto;display:flex;flex-direction:column}
 .select::after{content:"";width:8px;height:8px;border:solid var(--mute);border-width:0 2px 2px 0;transform:rotate(45deg);margin-top:-4px}
 .err-msg{font-size:.875rem;color:var(--err)}
 #page-login{margin-top:auto;margin-bottom:auto;padding-bottom:calc(var(--s12)*2);gap:var(--s6)}
+#page-login.galeri{padding-bottom:var(--s8)}
 .pw{position:relative}.pw .input{padding-right:52px}.pw-btn{position:absolute;right:2px;top:2px}
 
 /* Login & form */
@@ -182,6 +183,10 @@ main,.dlg-b{scrollbar-width:thin}
         <button class="btn btn-primary" id="btn-login" type="submit">Masuk</button>
         <p class="small" style="text-align:center">Lupa kode? Hubungi operator dapodik.</p>
       </form>
+      <div id="login-galeri" style="display:flex;flex-direction:column;gap:var(--s3)" hidden>
+        <h2>Galeri Kegiatan</h2>
+        <div class="slides" id="login-slides" role="region" aria-label="Galeri kegiatan" hidden></div>
+      </div>
     </section>
 
     <section id="page-home" class="page home" aria-labelledby="h-home">
@@ -234,7 +239,7 @@ const svg=n=>`<svg class="i" aria-hidden="true"><use href="#${ICON[n]||'i-dot'}"
 let code='',appData={slides:[],classes:[],eskul:[],counts:{}},eskul='',kelas='',members=[],students=[],ownCount=0,selected=[],slideTimer=null,lastFocus=null,openId=null,askRes=null;
 
 /* Server */
-const API_URL='https://script.google.com/macros/s/AKfycbx-hHWj5PkTGDkdNA3mQzhowSOj7VFNlZwuRPaFy1UwxBbZxRRhX3srJb8ATtieeqAS/exec';
+const API_URL='PASTE_URL_DEPLOY_GAS_DI_SINI';
 const srv=async(fn,...a)=>{
   if(!/^https:\/\//.test(API_URL))throw new Error('API_URL belum diisi. Tempel URL deploy Apps Script di kode.');
   let r,j;
@@ -272,7 +277,7 @@ function showPage(id){
   $('appbar').hidden=!inApp;$('ab-brand').hidden=id==='page-form'||id==='page-eskul';$('ab-back').hidden=!(id==='page-form'||id==='page-eskul');$('ab-title').textContent=id==='page-form'?eskul:'Beranda';$('ab-out').hidden=id!=='page-home';
   document.querySelector('main').scrollTop=0;const h=document.querySelector('#'+id+' [data-h]');h&&h.focus();
 }
-function logout(){ses.del();code='';selected=[];clearInterval(slideTimer);$('auth-code').value='';showPage('page-login')}
+function logout(){ses.del();code='';selected=[];clearInterval(slideTimer);$('auth-code').value='';showPage('page-login');galeriLogin()}
 
 /* Login */
 function loginErr(m){const e=$('login-err'),i=$('auth-code');e.textContent=m||'';e.hidden=!m;i.setAttribute('aria-invalid',m?'true':'false')}
@@ -294,15 +299,15 @@ async function keluarForm(){if(selected.length&&!await ask('Keluar tanpa menyimp
 $('btn-back').onclick=keluarForm;
 
 /* Home */
-function renderSlides(){
-  const box=$('slideshow');clearInterval(slideTimer);box.innerHTML='';
-  box.hidden=!appData.slides.length;if(!appData.slides.length)return;
-  appData.slides.forEach((u,i)=>{
+function renderSlides(box=$('slideshow'),list=list){
+  clearInterval(slideTimer);box.innerHTML='';
+  box.hidden=!list.length;if(!list.length)return;
+  list.forEach((u,i)=>{
     const d=document.createElement('div');d.className='slide'+(i?'':' on');
     const im=new Image();im.alt='';im.decoding='async';if(i)im.loading='lazy';im.src=u;
     im.addEventListener('error',()=>im.classList.add('bad'));d.appendChild(im);box.appendChild(d);
   });
-  if(appData.slides.length>1&&!matchMedia('(prefers-reduced-motion:reduce)').matches){
+  if(list.length>1&&!matchMedia('(prefers-reduced-motion:reduce)').matches){
     let n=0;const s=box.children;
     slideTimer=setInterval(()=>{s[n].classList.remove('on');n=(n+1)%s.length;s[n].classList.add('on')},4000);
   }
@@ -404,13 +409,23 @@ $('btn-save').onclick=async()=>{
     toast(m,r.diproses?'ok':'warn');
   }catch(e){fail(e)}finally{busy(false)}
 };
+/* Galeri di halaman login (publik): memakai penampil slideshow yang sama dengan Beranda */
+let galeri=null;
+async function galeriLogin(){
+  try{
+    if(!galeri)galeri=await srv('getSlides');
+    if(document.body.dataset.page!=='page-login')return;
+    renderSlides($('login-slides'),galeri);
+    $('login-galeri').hidden=!galeri.length;$('page-login').classList.toggle('galeri',galeri.length>0);
+  }catch(e){}
+}
 $('pw-toggle').onclick=()=>{const i=$('auth-code'),s=i.type==='password',b=$('pw-toggle');i.type=s?'text':'password';b.setAttribute('aria-pressed',s);b.setAttribute('aria-label',s?'Sembunyikan kode':'Tampilkan kode');b.querySelector('use').setAttribute('href',s?'#i-eye-off':'#i-eye')};
 /* Sesi login: disimpan 12 jam sejak waktu login, diperiksa ke server saat halaman dibuka */
 const SES='sb_sesi',TTL=12*36e5,ses={set(c){try{localStorage.setItem(SES,JSON.stringify({c:c,t:Date.now()}))}catch(e){}},del(){try{localStorage.removeItem(SES)}catch(e){}}};
 (async()=>{
   let s=null;try{s=JSON.parse(localStorage.getItem(SES))}catch(e){}
-  if(!s||!s.c)return;
-  if(!(Date.now()-s.t<TTL)){ses.del();return loginErr('Sesi 12 jam telah berakhir. Silakan masuk kembali.')}
+  if(!s||!s.c){galeriLogin();return}
+  if(!(Date.now()-s.t<TTL)){ses.del();galeriLogin();return loginErr('Sesi 12 jam telah berakhir. Silakan masuk kembali.')}
   $('page-login').hidden=true;busy(true,'Memulihkan sesi...');
   try{
     const d=await srv('getInitialData',s.c);
@@ -418,7 +433,7 @@ const SES='sb_sesi',TTL=12*36e5,ses={set(c){try{localStorage.setItem(SES,JSON.st
     $('me-name').textContent=d.pembina;$('me-eskul').textContent=d.own;$('own-count').textContent=ownCount+' anggota';
     renderSlides();renderMenu();showPage('page-home');
   }catch(e){
-    const m=(e&&e.message)||'';
+    const m=(e&&e.message)||'';galeriLogin();
     if(/kode akses|data kode|header sheet|data eskul/i.test(m)){ses.del();loginErr('Sesi tidak berlaku lagi. '+m)}
     else loginErr('Gagal terhubung ke server. Sesi Anda tetap tersimpan, muat ulang halaman untuk mencoba lagi.')
   }finally{$('page-login').hidden=false;busy(false)}
